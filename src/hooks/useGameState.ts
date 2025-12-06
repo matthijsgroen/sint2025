@@ -10,7 +10,8 @@ import type {
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 600;
 const GROUND_Y = GAME_HEIGHT - 100;
-const GUN_POSITION = { x: GAME_WIDTH / 2, y: GROUND_Y };
+const BUNKER_HEIGHT = 48; // 3x bot height (16px)
+const GUN_POSITION = { x: GAME_WIDTH / 2, y: GROUND_Y - BUNKER_HEIGHT };
 const FIRE_COOLDOWN = 200; // ms
 const MAX_LANDED_TROOPERS = 4;
 const PARACHUTE_OPEN_HEIGHT = 200;
@@ -26,6 +27,7 @@ const initialState: GameState = {
   explosions: [],
   gunAngle: 90,
   lastFireTime: 0,
+  destroyingStartTime: 0,
 };
 
 function checkCollision(
@@ -52,6 +54,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         gameStatus: "gameOver",
+      };
+
+    case "SET_DESTROYING":
+      return {
+        ...state,
+        gameStatus: "destroying",
+        destroyingStartTime: action.timestamp,
       };
 
     case "UPDATE_GUN_ANGLE":
@@ -146,7 +155,30 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // Update paratroopers
       let paratroopers = [...state.paratroopers, ...newParatroopers].map(
         (para) => {
-          if (para.landed) return para;
+          if (para.landed) {
+            // Move landed troopers towards the bunker side
+            const bunkerWidth = 64; // Half of bunker width (132/2)
+            const landedLeft = para.position.x < GUN_POSITION.x;
+            const targetX = landedLeft
+              ? GUN_POSITION.x - bunkerWidth
+              : GUN_POSITION.x + bunkerWidth;
+            const dx = targetX - para.position.x;
+            const moveSpeed = 30; // pixels per second
+
+            if (Math.abs(dx) > 5) {
+              // Still moving towards bunker side
+              const moveX = Math.sign(dx) * moveSpeed * dt;
+              return {
+                ...para,
+                position: {
+                  x: para.position.x + moveX,
+                  y: para.position.y,
+                },
+              };
+            }
+            // Reached bunker side
+            return para;
+          }
 
           const newY = para.position.y + para.velocity.y * dt;
           const parachuteOpen =
@@ -247,11 +279,38 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       );
       explosions = [...explosions, ...newExplosions];
 
-      // Count landed troopers
-      const landedTroopers = paratroopers.filter((p) => p.landed).length;
+      // Count troopers that reached the bunker
+      const bunkerWidth = 64;
+      const landedTroopers = paratroopers.filter((p) => {
+        if (!p.landed) return false;
+        const atBunkerSide =
+          Math.abs(p.position.x - GUN_POSITION.x) <= bunkerWidth + 5;
+        return atBunkerSide;
+      }).length;
 
-      // Check game over
-      if (landedTroopers >= MAX_LANDED_TROOPERS) {
+      // Check for destroying state
+      if (
+        landedTroopers >= MAX_LANDED_TROOPERS &&
+        state.gameStatus === "playing"
+      ) {
+        return {
+          ...state,
+          score,
+          helicopters,
+          paratroopers,
+          bullets,
+          explosions,
+          landedTroopers,
+          gameStatus: "destroying",
+          destroyingStartTime: Date.now(),
+        };
+      }
+
+      // Check if destroying animation is complete (2 seconds)
+      if (
+        state.gameStatus === "destroying" &&
+        Date.now() - state.destroyingStartTime > 2000
+      ) {
         return {
           ...state,
           score,

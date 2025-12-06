@@ -22,7 +22,7 @@ export function Gunner({ angle, x, y }: GunnerProps) {
       style={{
         left: `${x}px`,
         top: `${y}px`,
-        transform: "translate(-50%, -50%)",
+        transform: "translate(-50%, -100%)",
       }}
     >
       {/* Container that flips both gun and gunner */}

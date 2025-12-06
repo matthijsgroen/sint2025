@@ -13,6 +13,7 @@ import { Paratrooper } from "./Paratrooper";
 import { Bullet } from "./Bullet";
 import { Explosion } from "./Explosion";
 import { UI } from "./UI";
+import { Bunker } from "./Bunker";
 
 export function Game() {
   const { state, dispatch } = useGameState();
@@ -165,13 +166,19 @@ export function Game() {
         )}
 
         {/* Game Entities */}
-        {state.gameStatus === "playing" && (
+        {(state.gameStatus === "playing" ||
+          state.gameStatus === "destroying") && (
           <>
-            <Gunner
-              angle={state.gunAngle}
-              x={GUN_POSITION.x}
-              y={GUN_POSITION.y}
-            />
+            {/* Bunker */}
+            <Bunker x={GUN_POSITION.x} y={GROUND_Y} />
+
+            {state.gameStatus === "playing" && (
+              <Gunner
+                angle={state.gunAngle}
+                x={GUN_POSITION.x}
+                y={GUN_POSITION.y}
+              />
+            )}
 
             {state.helicopters.map((heli) => (
               <Helicopter
@@ -182,15 +189,39 @@ export function Game() {
               />
             ))}
 
-            {state.paratroopers.map((para) => (
-              <Paratrooper
-                key={para.id}
-                x={para.position.x}
-                y={para.position.y}
-                parachuteOpen={para.parachuteOpen}
-                landed={para.landed}
-              />
-            ))}
+            {state.paratroopers.map((para, index) => {
+              // Calculate stacking position for troopers at bunker side
+              const bunkerWidth = 64;
+              const atBunkerSide =
+                para.landed &&
+                Math.abs(para.position.x - GUN_POSITION.x) <= bunkerWidth + 5;
+
+              const troopersAtSameSide = state.paratroopers
+                .slice(0, index)
+                .filter((p) => {
+                  if (!p.landed) return false;
+                  const atSide =
+                    Math.abs(p.position.x - GUN_POSITION.x) <= bunkerWidth + 5;
+                  const sameSide =
+                    Math.sign(p.position.x - GUN_POSITION.x) ===
+                    Math.sign(para.position.x - GUN_POSITION.x);
+                  return atSide && sameSide;
+                }).length;
+
+              const stackY = atBunkerSide
+                ? GROUND_Y - troopersAtSameSide * 16
+                : para.position.y;
+
+              return (
+                <Paratrooper
+                  key={para.id}
+                  x={para.position.x}
+                  y={stackY}
+                  parachuteOpen={para.parachuteOpen}
+                  landed={para.landed}
+                />
+              );
+            })}
 
             {state.bullets.map((bullet) => (
               <Bullet

@@ -42,18 +42,20 @@ export interface GameState {
   score: number;
   wave: number;
   landedTroopers: number;
-  gameStatus: "menu" | "playing" | "gameOver";
+  gameStatus: "menu" | "playing" | "destroying" | "gameOver";
   helicopters: Helicopter[];
   paratroopers: Paratrooper[];
   bullets: Bullet[];
   explosions: Explosion[];
   gunAngle: number;
   lastFireTime: number;
+  destroyingStartTime: number;
 }
 
 export type GameAction =
   | { type: "START_GAME" }
   | { type: "GAME_OVER" }
+  | { type: "SET_DESTROYING"; timestamp: number }
   | { type: "UPDATE_GUN_ANGLE"; angle: number }
   | {
       type: "FIRE_BULLET";
