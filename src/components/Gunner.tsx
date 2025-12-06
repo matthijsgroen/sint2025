@@ -33,6 +33,7 @@ export function Gunner({ angle, x, y }: GunnerProps) {
           src={gunImg}
           alt="Gun"
           className="absolute w-12 h-12"
+          draggable={false}
           style={{
             left: "50%",
             top: "50%",
@@ -47,6 +48,7 @@ export function Gunner({ angle, x, y }: GunnerProps) {
           src={gunnerImg}
           alt="Gunner"
           className="relative w-16 h-16"
+          draggable={false}
           style={{
             zIndex: 1,
           }}

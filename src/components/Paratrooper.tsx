@@ -26,7 +26,12 @@ export function Paratrooper({ x, y, parachuteOpen, landed }: ParatrooperProps) {
           </div>
         </div>
       )}
-      <img src={botImg} alt="Paratrooper" className="w-8 h-8" />
+      <img
+        src={botImg}
+        alt="Paratrooper"
+        className="w-8 h-8"
+        draggable={false}
+      />
     </div>
   );
 }

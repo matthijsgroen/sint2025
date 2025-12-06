@@ -311,13 +311,20 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           landedOnRight >= MAX_LANDED_TROOPERS) &&
         state.gameStatus === "playing"
       ) {
+        // Add explosion at gunner position
+        const gunnerExplosion: Explosion = {
+          id: `explosion-gunner-${Date.now()}`,
+          position: { ...GUN_POSITION },
+          frame: 0,
+        };
+
         return {
           ...state,
           score,
           helicopters,
           paratroopers,
           bullets,
-          explosions,
+          explosions: [...explosions, gunnerExplosion],
           landedTroopers,
           gameStatus: "destroying",
           destroyingStartTime: Date.now(),

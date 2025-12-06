@@ -18,7 +18,12 @@ export function Helicopter({ x, y, direction }: HelicopterProps) {
         })`,
       }}
     >
-      <img src={shipImg} alt="Helicopter" className="w-20 h-12" />
+      <img
+        src={shipImg}
+        alt="Helicopter"
+        className="w-20 h-12"
+        draggable={false}
+      />
     </div>
   );
 }

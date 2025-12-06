@@ -20,6 +20,8 @@ export function Game() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const mousePositionRef = useRef({ x: GAME_WIDTH / 2, y: 0 });
+  const [gameOverTime, setGameOverTime] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState(3);
 
   useGameLoop(
     state.gameStatus,
@@ -28,6 +30,33 @@ export function Game() {
     state.helicoptersSpawnedThisWave,
     dispatch
   );
+
+  // Track when game over happens
+  useEffect(() => {
+    if (state.gameStatus === "gameOver" && gameOverTime === null) {
+      setGameOverTime(Date.now());
+      setCountdown(3);
+    } else if (state.gameStatus !== "gameOver") {
+      setGameOverTime(null);
+      setCountdown(3);
+    }
+  }, [state.gameStatus, gameOverTime]);
+
+  // Update countdown during game over
+  useEffect(() => {
+    if (state.gameStatus === "gameOver" && gameOverTime) {
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - gameOverTime;
+        const remaining = Math.ceil((3000 - elapsed) / 1000);
+        setCountdown(Math.max(0, remaining));
+
+        if (elapsed >= 3000) {
+          clearInterval(interval);
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [state.gameStatus, gameOverTime]);
 
   // Calculate scale to fit screen
   useEffect(() => {
@@ -71,6 +100,7 @@ export function Game() {
     mousePositionRef.current = { x: mouseX, y: clampedMouseY };
 
     // Calculate angle: atan2(dy, dx) where right=0°, up=-90°, left=±180°
+    // Use clampedDy so angle stays at horizontal when mouse is below
     const angleRad = Math.atan2(clampedDy, dx);
     const angleDeg = angleRad * (180 / Math.PI);
 
@@ -81,11 +111,17 @@ export function Game() {
       gunRotation = Math.abs(angleDeg);
     } else {
       // Left: -180° to -90° maps to 0-90 rotation
-      gunRotation = 180 - Math.abs(angleDeg);
+      // When horizontal (angleDeg = ±180), gunRotation should be 0
+      const absAngle = Math.abs(angleDeg);
+      gunRotation = absAngle > 90 ? 180 - absAngle : absAngle;
     }
 
     // Positive angle = right side, negative = left side
-    const angle = isRightSide ? gunRotation : -gunRotation;
+    // Add a tiny offset to ensure flip happens correctly at horizontal
+    let angle = isRightSide ? gunRotation : -gunRotation;
+    if (gunRotation === 0) {
+      angle = isRightSide ? 0.01 : -0.01;
+    }
 
     dispatch({ type: "UPDATE_GUN_ANGLE", angle });
   };
@@ -97,7 +133,10 @@ export function Game() {
     }
 
     if (state.gameStatus === "gameOver") {
-      dispatch({ type: "START_GAME" });
+      // Only allow restart after 3 seconds
+      if (gameOverTime && Date.now() - gameOverTime >= 3000) {
+        dispatch({ type: "START_GAME" });
+      }
       return;
     }
 
@@ -133,7 +172,7 @@ export function Game() {
       velocity,
       timestamp: Date.now(),
     });
-  }, [state.gameStatus, dispatch]);
+  }, [state.gameStatus, dispatch, gameOverTime]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -188,7 +227,11 @@ export function Game() {
               <h1 className="text-6xl font-bold mb-4">GAME OVER</h1>
               <p className="text-3xl mb-4">Final Score: {state.score}</p>
               <p className="text-2xl mb-8">Wave: {state.wave}</p>
-              <p className="text-xl">Click to Restart</p>
+              {countdown > 0 ? (
+                <p className="text-xl text-gray-300">Wait {countdown}s...</p>
+              ) : (
+                <p className="text-xl animate-pulse">Click to Restart</p>
+              )}
             </div>
           </div>
         )}
