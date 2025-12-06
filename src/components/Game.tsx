@@ -77,9 +77,17 @@ export function Game() {
 
     if (state.gameStatus !== "playing") return;
 
-    // Calculate direction from gun to mouse position
-    const dx = mousePositionRef.current.x - GUN_POSITION.x;
-    const dy = mousePositionRef.current.y - GUN_POSITION.y;
+    // Bullet spawns at gun's rotation origin (center of gunner asset)
+    // Gunner is positioned with its bottom at GUN_POSITION.y, so adjust for center
+    const gunnerHeight = 64; // Height of gunner image (h-16 = 64px)
+    const bulletSpawnPosition = {
+      x: GUN_POSITION.x,
+      y: GUN_POSITION.y - gunnerHeight / 2, // Move up half the gunner height
+    };
+
+    // Calculate direction from spawn position to mouse position
+    const dx = mousePositionRef.current.x - bulletSpawnPosition.x;
+    const dy = mousePositionRef.current.y - bulletSpawnPosition.y;
 
     // Normalize and apply speed
     const length = Math.sqrt(dx * dx + dy * dy);
@@ -92,7 +100,7 @@ export function Game() {
 
     dispatch({
       type: "FIRE_BULLET",
-      position: { ...GUN_POSITION },
+      position: bulletSpawnPosition,
       velocity,
       timestamp: Date.now(),
     });
