@@ -47,19 +47,39 @@ export function Game() {
     const mouseX = (e.clientX - rect.left) / scale;
     const mouseY = (e.clientY - rect.top) / scale;
 
-    // Store mouse position for bullet firing
-    mousePositionRef.current = { x: mouseX, y: mouseY };
+    // Determine which side we're on based purely on mouse X position
+    const isRightSide = mouseX >= GUN_POSITION.x;
+
+    // Calculate angle from the gun's rotation point (center of gunner)
+    const gunnerHeight = 64;
+    const gunRotationY = GUN_POSITION.y - gunnerHeight / 2;
 
     const dx = mouseX - GUN_POSITION.x;
-    const dy = mouseY - GUN_POSITION.y;
+    const dy = mouseY - gunRotationY;
 
-    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    // Only allow shooting at or above horizontal (dy <= 0)
+    const clampedDy = Math.min(dy, 0);
+    const clampedMouseY = gunRotationY + clampedDy;
 
-    // Clamp angle to -90 to 90 (left to right, with 0 being straight up)
-    angle = Math.max(-90, Math.min(90, angle));
+    // Store mouse position for bullet firing
+    mousePositionRef.current = { x: mouseX, y: clampedMouseY };
 
-    // Convert to 0-180 range where 0=left, 90=up, 180=right
-    angle = angle + 90;
+    // Calculate angle: atan2(dy, dx) where right=0°, up=-90°, left=±180°
+    const angleRad = Math.atan2(clampedDy, dx);
+    const angleDeg = angleRad * (180 / Math.PI);
+
+    // Convert to gun rotation (0-90 degrees from horizontal to up)
+    let gunRotation;
+    if (isRightSide) {
+      // Right: 0° to -90° maps to 0-90 rotation
+      gunRotation = Math.abs(angleDeg);
+    } else {
+      // Left: -180° to -90° maps to 0-90 rotation
+      gunRotation = 180 - Math.abs(angleDeg);
+    }
+
+    // Positive angle = right side, negative = left side
+    const angle = isRightSide ? gunRotation : -gunRotation;
 
     dispatch({ type: "UPDATE_GUN_ANGLE", angle });
   };
@@ -89,13 +109,16 @@ export function Game() {
     const dx = mousePositionRef.current.x - bulletSpawnPosition.x;
     const dy = mousePositionRef.current.y - bulletSpawnPosition.y;
 
+    // Clamp dy to only allow upward or horizontal shooting (dy <= 0)
+    const clampedDy = Math.min(dy, 0);
+
     // Normalize and apply speed
-    const length = Math.sqrt(dx * dx + dy * dy);
+    const length = Math.sqrt(dx * dx + clampedDy * clampedDy);
     const bulletSpeed = 400;
 
     const velocity = {
       x: (dx / length) * bulletSpeed,
-      y: (dy / length) * bulletSpeed,
+      y: (clampedDy / length) * bulletSpeed,
     };
 
     dispatch({
@@ -122,7 +145,7 @@ export function Game() {
     <div className="flex items-center justify-center min-h-screen bg-linear-to-b from-sky-400 to-sky-200">
       <div
         ref={containerRef}
-        className="relative bg-linear-to-b from-sky-300 to-green-200 cursor-crosshair"
+        className="relative bg-sky-400 overflow-hidden select-none"
         style={{
           width: `${GAME_WIDTH}px`,
           height: `${GAME_HEIGHT}px`,

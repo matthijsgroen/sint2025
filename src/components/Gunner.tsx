@@ -8,14 +8,10 @@ interface GunnerProps {
 }
 
 export function Gunner({ angle, x, y }: GunnerProps) {
-  // Determine if we need to flip (when aiming to the right, angle > 90)
-  const shouldFlip = angle > 90;
-
-  // Gun rotation calculation:
-  // angle: 0=left (0deg rotation), 90=up (90deg rotation), 180=right (0deg rotation when flipped)
-  // When not flipped (left side): rotate from 0deg (horizontal left) to 90deg (up)
-  // When flipped (right side): rotate from 0deg (horizontal right after flip) to 90deg (up)
-  const gunRotation = shouldFlip ? 180 - angle : angle;
+  // angle: positive = right side, negative = left side
+  // Gunner faces LEFT by default, flip when aiming RIGHT
+  const shouldFlip = angle > 0;
+  const gunRotation = Math.abs(angle);
 
   return (
     <div
