@@ -244,7 +244,7 @@ export function Game() {
       velocity,
       timestamp: Date.now(),
     });
-  }, [state.gameStatus, dispatch, gameOverTime]);
+  }, [state.gameStatus, dispatch, gameOverTime, victoryTime]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -259,7 +259,7 @@ export function Game() {
   }, [handleClick]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-300 via-pink-200 to-orange-200">
+    <div className="flex items-center justify-center min-h-screen bg-linear-to-b from-purple-300 via-pink-200 to-orange-200">
       <div
         ref={containerRef}
         className="relative overflow-hidden select-none"
@@ -306,7 +306,7 @@ export function Game() {
 
         {/* Ground */}
         <div
-          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-stone-700 via-stone-600 to-stone-500"
+          className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-stone-700 via-stone-600 to-stone-500"
           style={{ height: `${GAME_HEIGHT - GROUND_Y}px` }}
         />
 
@@ -373,7 +373,7 @@ export function Game() {
               </p>
               <div className="w-full h-6 bg-gray-800 bg-opacity-70 rounded-full border-2 border-yellow-300">
                 <div
-                  className="h-full bg-gradient-to-r from-yellow-400 to-yellow-200 rounded-full transition-all duration-100"
+                  className="h-full bg-linear-to-r from-yellow-400 to-yellow-200 rounded-full transition-all duration-100"
                   style={{ width: `${timeProgress}%` }}
                 />
               </div>
