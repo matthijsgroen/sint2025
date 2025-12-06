@@ -10,7 +10,7 @@ const MAX_BOMBER_SPAWN_INTERVAL = 60000; // 60 seconds maximum
 const BOMBER_SPEED = 200; // pixels/second - fast!
 
 export function useGameLoop(
-  gameStatus: "menu" | "playing" | "gameOver" | "destroying",
+  gameStatus: "menu" | "playing" | "gameOver" | "destroying" | "victory",
   wave: number,
   helicopters: Helicopter[],
   helicoptersSpawnedThisWave: number,

@@ -65,6 +65,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         gameStatus: "gameOver",
       };
 
+    case "VICTORY":
+      return {
+        ...state,
+        gameStatus: "victory",
+      };
+
     case "SET_DESTROYING":
       return {
         ...state,

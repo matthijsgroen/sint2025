@@ -23,7 +23,10 @@ export function Game() {
   const [scale, setScale] = useState(1);
   const mousePositionRef = useRef({ x: GAME_WIDTH / 2, y: 0 });
   const [gameOverTime, setGameOverTime] = useState<number | null>(null);
+  const [victoryTime, setVictoryTime] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(3);
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null);
+  const [timeProgress, setTimeProgress] = useState(0);
 
   useGameLoop(
     state.gameStatus,
@@ -44,6 +47,50 @@ export function Game() {
     }
   }, [state.gameStatus, gameOverTime]);
 
+  // Track when victory happens
+  useEffect(() => {
+    if (state.gameStatus === "victory" && victoryTime === null) {
+      setVictoryTime(Date.now());
+      setCountdown(3);
+    } else if (state.gameStatus !== "victory") {
+      setVictoryTime(null);
+    }
+  }, [state.gameStatus, victoryTime]);
+
+  // Track game start time and progress
+  useEffect(() => {
+    if (state.gameStatus === "playing" && gameStartTime === null) {
+      setGameStartTime(Date.now());
+      setTimeProgress(0);
+    } else if (
+      state.gameStatus !== "playing" &&
+      state.gameStatus !== "destroying"
+    ) {
+      setGameStartTime(null);
+      setTimeProgress(0);
+    }
+  }, [state.gameStatus, gameStartTime]);
+
+  // Update time progress during gameplay
+  useEffect(() => {
+    if (
+      (state.gameStatus === "playing" || state.gameStatus === "destroying") &&
+      gameStartTime
+    ) {
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - gameStartTime;
+        const progress = Math.min((elapsed / (4 * 60 * 1000)) * 100, 100); // 4 minutes
+        setTimeProgress(progress);
+
+        // Trigger victory when time is up
+        if (progress >= 100 && state.gameStatus === "playing") {
+          dispatch({ type: "VICTORY" });
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [state.gameStatus, gameStartTime, dispatch]);
+
   // Update countdown during game over
   useEffect(() => {
     if (state.gameStatus === "gameOver" && gameOverTime) {
@@ -59,6 +106,22 @@ export function Game() {
       return () => clearInterval(interval);
     }
   }, [state.gameStatus, gameOverTime]);
+
+  // Update countdown during victory
+  useEffect(() => {
+    if (state.gameStatus === "victory" && victoryTime) {
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - victoryTime;
+        const remaining = Math.ceil((3000 - elapsed) / 1000);
+        setCountdown(Math.max(0, remaining));
+
+        if (elapsed >= 3000) {
+          clearInterval(interval);
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [state.gameStatus, victoryTime]);
 
   // Calculate scale to fit screen
   useEffect(() => {
@@ -142,6 +205,14 @@ export function Game() {
       return;
     }
 
+    if (state.gameStatus === "victory") {
+      // Only allow restart after 3 seconds
+      if (victoryTime && Date.now() - victoryTime >= 3000) {
+        dispatch({ type: "START_GAME" });
+      }
+      return;
+    }
+
     if (state.gameStatus !== "playing") return;
 
     // Bullet spawns at gun's rotation origin (center of gunner asset)
@@ -189,22 +260,54 @@ export function Game() {
   }, [handleClick]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-linear-to-b from-sky-400 to-sky-200">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-purple-300 via-pink-200 to-orange-200">
       <div
         ref={containerRef}
-        className="relative bg-sky-400 overflow-hidden select-none"
+        className="relative overflow-hidden select-none"
         style={{
           width: `${GAME_WIDTH}px`,
           height: `${GAME_HEIGHT}px`,
           transform: `scale(${scale})`,
           transformOrigin: "center center",
+          background:
+            "linear-gradient(to bottom, #c4b5fd 0%, #ddd6fe 30%, #f5d0fe 60%, #fce7f3 100%)",
         }}
         onMouseMove={handleMouseMove}
         onClick={handleClick}
       >
+        {/* Planetary Ring */}
+        <div
+          className="absolute"
+          style={{
+            left: "50%",
+            top: "15%",
+            width: "1000px",
+            height: "150px",
+            transform: "translateX(-50%) rotateX(75deg)",
+            background:
+              "linear-gradient(to bottom, rgba(139, 92, 246, 0.25), rgba(168, 85, 247, 0.4), rgba(139, 92, 246, 0.25))",
+            borderRadius: "50%",
+            boxShadow: "0 0 60px rgba(168, 85, 247, 0.3)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          className="absolute"
+          style={{
+            left: "50%",
+            top: "15%",
+            width: "700px",
+            height: "100px",
+            transform: "translateX(-50%) rotateX(75deg)",
+            background: "#c4b5fd",
+            borderRadius: "50%",
+            pointerEvents: "none",
+          }}
+        />
+
         {/* Ground */}
         <div
-          className="absolute bottom-0 left-0 right-0 bg-green-600"
+          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-stone-700 via-stone-600 to-stone-500"
           style={{ height: `${GAME_HEIGHT - GROUND_Y}px` }}
         />
 
@@ -238,13 +341,45 @@ export function Game() {
           </div>
         )}
 
+        {/* Victory Screen */}
+        {state.gameStatus === "victory" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="text-center text-yellow-300">
+              <h1 className="text-6xl font-bold mb-4">VICTORY!</h1>
+              <p className="text-3xl mb-4">You survived!</p>
+              <p className="text-3xl mb-4">Final Score: {state.score}</p>
+              <p className="text-2xl mb-8">Wave: {state.wave}</p>
+              {countdown > 0 ? (
+                <p className="text-xl text-gray-300">Wait {countdown}s...</p>
+              ) : (
+                <p className="text-xl animate-pulse">Click to Restart</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* UI */}
         {state.gameStatus === "playing" && (
-          <UI
-            score={state.score}
-            wave={state.wave}
-            landedTroopers={state.landedTroopers}
-          />
+          <>
+            <UI
+              score={state.score}
+              wave={state.wave}
+              landedTroopers={state.landedTroopers}
+            />
+
+            {/* Time Progress Bar */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-80">
+              <p className="text-yellow-300 text-center text-sm mb-2 font-bold">
+                TIME TILL FREEDOM
+              </p>
+              <div className="w-full h-6 bg-gray-800 bg-opacity-70 rounded-full border-2 border-yellow-300">
+                <div
+                  className="h-full bg-gradient-to-r from-yellow-400 to-yellow-200 rounded-full transition-all duration-100"
+                  style={{ width: `${timeProgress}%` }}
+                />
+              </div>
+            </div>
+          </>
         )}
 
         {/* Game Entities */}

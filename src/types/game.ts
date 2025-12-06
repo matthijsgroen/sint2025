@@ -58,7 +58,7 @@ export interface GameState {
   wave: number;
   landedTroopers: number;
   helicoptersSpawnedThisWave: number;
-  gameStatus: "menu" | "playing" | "destroying" | "gameOver";
+  gameStatus: "menu" | "playing" | "destroying" | "gameOver" | "victory";
   helicopters: Helicopter[];
   bombers: Bomber[];
   bombs: Bomb[];
@@ -74,6 +74,7 @@ export interface GameState {
 export type GameAction =
   | { type: "START_GAME" }
   | { type: "GAME_OVER" }
+  | { type: "VICTORY" }
   | { type: "SET_DESTROYING"; timestamp: number }
   | { type: "UPDATE_GUN_ANGLE"; angle: number }
   | {
