@@ -9,8 +9,10 @@ import {
 import { useGameLoop } from "../hooks/useGameLoop";
 import { Gunner } from "./Gunner";
 import { Helicopter } from "./Helicopter";
+import { Bomber } from "./Bomber";
 import { Paratrooper } from "./Paratrooper";
 import { Bullet } from "./Bullet";
+import { Bomb } from "./Bomb";
 import { Explosion } from "./Explosion";
 import { UI } from "./UI";
 import { Bunker } from "./Bunker";
@@ -209,7 +211,7 @@ export function Game() {
         {/* Menu Screen */}
         {state.gameStatus === "menu" && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-center text-white">
+            <div className="text-center text-yellow-300">
               <h1 className="text-6xl font-bold mb-4">HELLTROOPER</h1>
               <p className="text-2xl mb-8">Click to Start</p>
               <p className="text-lg">
@@ -223,7 +225,7 @@ export function Game() {
         {/* Game Over Screen */}
         {state.gameStatus === "gameOver" && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-center text-white">
+            <div className="text-center text-yellow-300">
               <h1 className="text-6xl font-bold mb-4">GAME OVER</h1>
               <p className="text-3xl mb-4">Final Score: {state.score}</p>
               <p className="text-2xl mb-8">Wave: {state.wave}</p>
@@ -267,6 +269,19 @@ export function Game() {
                 y={heli.position.y}
                 direction={heli.direction}
               />
+            ))}
+
+            {state.bombers.map((bomber) => (
+              <Bomber
+                key={bomber.id}
+                x={bomber.position.x}
+                y={bomber.position.y}
+                direction={bomber.direction}
+              />
+            ))}
+
+            {state.bombs.map((bomb) => (
+              <Bomb key={bomb.id} x={bomb.position.x} y={bomb.position.y} />
             ))}
 
             {state.paratroopers.map((para, index) => {

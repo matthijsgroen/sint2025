@@ -5,6 +5,7 @@ import type {
   Paratrooper,
   Bullet,
   Explosion,
+  Bomb,
 } from "../types/game";
 
 const GAME_WIDTH = 800;
@@ -15,6 +16,9 @@ const GUN_POSITION = { x: GAME_WIDTH / 2, y: GROUND_Y - BUNKER_HEIGHT };
 const FIRE_COOLDOWN = 200; // ms
 const MAX_LANDED_TROOPERS = 4;
 const PARACHUTE_OPEN_HEIGHT = 200;
+const GRAVITY = 150; // pixels/second²
+const BOMB_DROP_DISTANCE = 250; // pixels from bunker
+const BUNKER_RADIUS = 66; // Half of bunker width
 
 const initialState: GameState = {
   score: 0,
@@ -23,12 +27,15 @@ const initialState: GameState = {
   helicoptersSpawnedThisWave: 0,
   gameStatus: "menu",
   helicopters: [],
+  bombers: [],
+  bombs: [],
   paratroopers: [],
   bullets: [],
   explosions: [],
   gunAngle: 90,
   lastFireTime: 0,
   destroyingStartTime: 0,
+  lastBomberSpawn: 0,
 };
 
 function checkCollision(
@@ -97,6 +104,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         helicoptersSpawnedThisWave: state.helicoptersSpawnedThisWave + 1,
       };
 
+    case "SPAWN_BOMBER":
+      return {
+        ...state,
+        bombers: [...state.bombers, action.bomber],
+        lastBomberSpawn: action.timestamp,
+      };
+
     case "ADD_EXPLOSION": {
       const newExplosion: Explosion = {
         id: `explosion-${Date.now()}-${Math.random()}`,
@@ -137,6 +151,72 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       // Remove helicopters that flew off screen
       helicopters = helicopters.filter(
         (heli) => heli.position.x > -50 && heli.position.x < GAME_WIDTH + 50
+      );
+
+      // Update bombers
+      let bombers = state.bombers.map((bomber) => ({
+        ...bomber,
+        position: {
+          x:
+            bomber.position.x +
+            bomber.speed * (bomber.direction === "right" ? 1 : -1) * dt,
+          y: bomber.position.y,
+        },
+      }));
+
+      // Remove bombers that flew off screen
+      bombers = bombers.filter(
+        (bomber) =>
+          bomber.position.x > -50 && bomber.position.x < GAME_WIDTH + 50
+      );
+
+      // Drop bombs from bombers
+      const newBombs: Bomb[] = [];
+      bombers = bombers.map((bomber) => {
+        if (!bomber.hasBombed) {
+          const distanceFromBunker = Math.abs(
+            bomber.position.x - GUN_POSITION.x
+          );
+          if (distanceFromBunker <= BOMB_DROP_DISTANCE) {
+            // Calculate arc trajectory toward bunker
+            const dx = GUN_POSITION.x - bomber.position.x;
+            const dy = GUN_POSITION.y - bomber.position.y;
+            const timeToTarget = 2.5; // seconds
+
+            const vx = dx / timeToTarget;
+            const vy = dy / timeToTarget - 0.5 * GRAVITY * timeToTarget;
+
+            newBombs.push({
+              id: `bomb-${Date.now()}-${Math.random()}`,
+              position: { x: bomber.position.x, y: bomber.position.y + 10 },
+              velocity: { x: vx, y: vy },
+              active: true,
+            });
+            return { ...bomber, hasBombed: true };
+          }
+        }
+        return bomber;
+      });
+
+      // Update bombs with gravity
+      let bombs = [...state.bombs, ...newBombs].map((bomb) => ({
+        ...bomb,
+        position: {
+          x: bomb.position.x + bomb.velocity.x * dt,
+          y: bomb.position.y + bomb.velocity.y * dt,
+        },
+        velocity: {
+          x: bomb.velocity.x,
+          y: bomb.velocity.y + GRAVITY * dt,
+        },
+      }));
+
+      // Remove bombs that hit the ground or went off screen
+      bombs = bombs.filter(
+        (bomb) =>
+          bomb.position.y < GROUND_Y + 20 &&
+          bomb.position.x > -50 &&
+          bomb.position.x < GAME_WIDTH + 50
       );
 
       // Drop paratroopers from helicopters
@@ -278,8 +358,80 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         });
       });
 
+      // Bullets vs Bombers
+      const bombersToRemove = new Set<string>();
+      bullets.forEach((bullet) => {
+        bombers.forEach((bomber) => {
+          if (checkCollision(bullet.position, bomber.position, 5, 30)) {
+            bulletsToRemove.add(bullet.id);
+            bombersToRemove.add(bomber.id);
+            score += 150;
+            newExplosions.push({
+              id: `explosion-${Date.now()}-${Math.random()}`,
+              position: { ...bomber.position },
+              frame: 0,
+            });
+          }
+        });
+      });
+
+      // Bullets vs Bombs
+      const bombsToRemove = new Set<string>();
+      bullets.forEach((bullet) => {
+        bombs.forEach((bomb) => {
+          if (checkCollision(bullet.position, bomb.position, 5, 10)) {
+            bulletsToRemove.add(bullet.id);
+            bombsToRemove.add(bomb.id);
+            score += 100;
+            newExplosions.push({
+              id: `explosion-${Date.now()}-${Math.random()}`,
+              position: { ...bomb.position },
+              frame: 0,
+            });
+          }
+        });
+      });
+
+      // Bombs vs Bunker (Instakill) - check BEFORE filtering
+      let bombHitBunker = false;
+      bombs.forEach((bomb) => {
+        if (checkCollision(bomb.position, GUN_POSITION, 10, BUNKER_RADIUS)) {
+          bombHitBunker = true;
+          const bunkerExplosion: Explosion = {
+            id: `explosion-bunker-${Date.now()}`,
+            position: { ...GUN_POSITION },
+            frame: 0,
+          };
+          const bombExplosion: Explosion = {
+            id: `explosion-bomb-${Date.now()}`,
+            position: { ...bomb.position },
+            frame: 0,
+          };
+
+          explosions = [...explosions, bunkerExplosion, bombExplosion];
+        }
+      });
+
+      // If bomb hit bunker, trigger immediate game over
+      if (bombHitBunker && state.gameStatus === "playing") {
+        return {
+          ...state,
+          score,
+          helicopters: [],
+          bombers: [],
+          bombs: [],
+          paratroopers,
+          bullets,
+          explosions,
+          landedTroopers: state.landedTroopers,
+          gameStatus: "destroying",
+          destroyingStartTime: Date.now(),
+        };
+      }
       bullets = bullets.filter((b) => !bulletsToRemove.has(b.id));
       helicopters = helicopters.filter((h) => !helicoptersToRemove.has(h.id));
+      bombers = bombers.filter((b) => !bombersToRemove.has(b.id));
+      bombs = bombs.filter((b) => !bombsToRemove.has(b.id));
       paratroopers = paratroopers.filter(
         (p) => !paratroopersToRemove.has(p.id)
       );
@@ -322,6 +474,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state,
           score,
           helicopters,
+          bombers,
+          bombs,
           paratroopers,
           bullets,
           explosions: [...explosions, gunnerExplosion],
@@ -340,6 +494,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state,
           score,
           helicopters,
+          bombers,
+          bombs,
           paratroopers,
           bullets,
           explosions,
@@ -352,6 +508,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         score,
         helicopters,
+        bombers,
+        bombs,
         paratroopers,
         bullets,
         explosions,

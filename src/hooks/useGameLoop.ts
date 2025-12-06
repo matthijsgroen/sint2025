@@ -1,10 +1,13 @@
 import { useEffect, useRef } from "react";
-import type { GameAction, Helicopter } from "../types/game";
+import type { GameAction, Helicopter, Bomber } from "../types/game";
 import { GAME_WIDTH } from "./useGameState";
 
 const BASE_SPAWN_INTERVAL = 5000; // ms - start slower
 const MIN_SPAWN_INTERVAL = 1000; // ms - don't get too fast
 const BASE_HELICOPTERS = 4; // Starting number of helicopters in wave 1
+const MIN_BOMBER_SPAWN_INTERVAL = 30000; // 30 seconds minimum
+const MAX_BOMBER_SPAWN_INTERVAL = 60000; // 60 seconds maximum
+const BOMBER_SPEED = 200; // pixels/second - fast!
 
 export function useGameLoop(
   gameStatus: "menu" | "playing" | "gameOver" | "destroying",
@@ -15,6 +18,7 @@ export function useGameLoop(
 ) {
   const lastTimeRef = useRef<number>(0);
   const lastSpawnRef = useRef<number>(0);
+  const lastBomberSpawnRef = useRef<number>(0);
   const animationFrameRef = useRef<number>(0);
 
   useEffect(() => {
@@ -29,6 +33,7 @@ export function useGameLoop(
       if (!lastTimeRef.current) {
         lastTimeRef.current = currentTime;
         lastSpawnRef.current = currentTime;
+        lastBomberSpawnRef.current = currentTime;
       }
 
       const deltaTime = currentTime - lastTimeRef.current;
@@ -67,6 +72,36 @@ export function useGameLoop(
 
           dispatch({ type: "SPAWN_HELICOPTER", helicopter });
           lastSpawnRef.current = currentTime;
+        }
+
+        // Spawn bombers at random intervals - gets slightly more frequent with waves
+        const waveReduction = Math.min((wave - 1) * 1000, 5000); // Max 5s reduction
+        const minInterval = Math.max(
+          10000,
+          MIN_BOMBER_SPAWN_INTERVAL - waveReduction
+        );
+        const maxInterval = Math.max(
+          minInterval + 10000,
+          MAX_BOMBER_SPAWN_INTERVAL - waveReduction
+        );
+        const randomBomberInterval =
+          minInterval + Math.random() * (maxInterval - minInterval);
+
+        if (currentTime - lastBomberSpawnRef.current > randomBomberInterval) {
+          const direction = Math.random() > 0.5 ? "right" : "left";
+          const bomber: Bomber = {
+            id: `bomber-${Date.now()}-${Math.random()}`,
+            position: {
+              x: direction === "right" ? -50 : GAME_WIDTH + 50,
+              y: 30 + Math.random() * 40, // Higher than helicopters
+            },
+            direction,
+            speed: BOMBER_SPEED,
+            hasBombed: false,
+          };
+
+          dispatch({ type: "SPAWN_BOMBER", bomber, timestamp: currentTime });
+          lastBomberSpawnRef.current = currentTime;
         }
 
         // Check for wave advancement - all helicopters spawned and cleared

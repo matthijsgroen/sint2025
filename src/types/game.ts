@@ -17,6 +17,21 @@ export interface Helicopter {
   health: number;
 }
 
+export interface Bomber {
+  id: string;
+  position: Position;
+  direction: "left" | "right";
+  speed: number;
+  hasBombed: boolean;
+}
+
+export interface Bomb {
+  id: string;
+  position: Position;
+  velocity: Velocity;
+  active: boolean;
+}
+
 export interface Paratrooper {
   id: string;
   position: Position;
@@ -45,12 +60,15 @@ export interface GameState {
   helicoptersSpawnedThisWave: number;
   gameStatus: "menu" | "playing" | "destroying" | "gameOver";
   helicopters: Helicopter[];
+  bombers: Bomber[];
+  bombs: Bomb[];
   paratroopers: Paratrooper[];
   bullets: Bullet[];
   explosions: Explosion[];
   gunAngle: number;
   lastFireTime: number;
   destroyingStartTime: number;
+  lastBomberSpawn: number;
 }
 
 export type GameAction =
@@ -65,6 +83,7 @@ export type GameAction =
       timestamp: number;
     }
   | { type: "SPAWN_HELICOPTER"; helicopter: Helicopter }
+  | { type: "SPAWN_BOMBER"; bomber: Bomber; timestamp: number }
   | { type: "UPDATE_ENTITIES"; deltaTime: number }
   | { type: "ADD_EXPLOSION"; position: Position }
   | { type: "NEXT_WAVE" };
