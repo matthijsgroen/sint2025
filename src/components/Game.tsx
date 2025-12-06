@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useGameState,
   GUN_POSITION,
@@ -17,31 +17,51 @@ import { UI } from "./UI";
 export function Game() {
   const { state, dispatch } = useGameState();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const mousePositionRef = useRef({ x: GAME_WIDTH / 2, y: 0 });
 
   useGameLoop(state.gameStatus, state.wave, state.helicopters, dispatch);
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (state.gameStatus !== "playing") return;
+  // Calculate scale to fit screen
+  useEffect(() => {
+    const updateScale = () => {
+      const padding = 40; // Padding around the game
+      const scaleX = (window.innerWidth - padding) / GAME_WIDTH;
+      const scaleY = (window.innerHeight - padding) / GAME_HEIGHT;
+      const newScale = Math.min(scaleX, scaleY, 1.5); // Cap at 1.5x to avoid too large
+      setScale(newScale);
+    };
 
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (state.gameStatus !== "playing") return;
 
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
 
-      const dx = mouseX - GUN_POSITION.x;
-      const dy = mouseY - GUN_POSITION.y;
+    // Account for scale when calculating mouse position
+    const mouseX = (e.clientX - rect.left) / scale;
+    const mouseY = (e.clientY - rect.top) / scale;
 
-      let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+    // Store mouse position for bullet firing
+    mousePositionRef.current = { x: mouseX, y: mouseY };
 
-      // Clamp angle to 0-180 (only shoot upward)
-      angle = Math.max(0, Math.min(180, angle));
+    const dx = mouseX - GUN_POSITION.x;
+    const dy = mouseY - GUN_POSITION.y;
 
-      dispatch({ type: "UPDATE_GUN_ANGLE", angle });
-    },
-    [state.gameStatus, dispatch]
-  );
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    // Clamp angle to -90 to 90 (left to right, with 0 being straight up)
+    angle = Math.max(-90, Math.min(90, angle));
+
+    // Convert to 0-180 range where 0=left, 90=up, 180=right
+    angle = angle + 90;
+
+    dispatch({ type: "UPDATE_GUN_ANGLE", angle });
+  };
 
   const handleClick = useCallback(() => {
     if (state.gameStatus === "menu") {
@@ -56,12 +76,17 @@ export function Game() {
 
     if (state.gameStatus !== "playing") return;
 
-    const angleRad = (state.gunAngle - 90) * (Math.PI / 180);
+    // Calculate direction from gun to mouse position
+    const dx = mousePositionRef.current.x - GUN_POSITION.x;
+    const dy = mousePositionRef.current.y - GUN_POSITION.y;
+
+    // Normalize and apply speed
+    const length = Math.sqrt(dx * dx + dy * dy);
     const bulletSpeed = 400;
 
     const velocity = {
-      x: Math.cos(angleRad) * bulletSpeed,
-      y: Math.sin(angleRad) * bulletSpeed,
+      x: (dx / length) * bulletSpeed,
+      y: (dy / length) * bulletSpeed,
     };
 
     dispatch({
@@ -70,7 +95,7 @@ export function Game() {
       velocity,
       timestamp: Date.now(),
     });
-  }, [state.gameStatus, state.gunAngle, dispatch]);
+  }, [state.gameStatus, dispatch]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -92,6 +117,8 @@ export function Game() {
         style={{
           width: `${GAME_WIDTH}px`,
           height: `${GAME_HEIGHT}px`,
+          transform: `scale(${scale})`,
+          transformOrigin: "center center",
         }}
         onMouseMove={handleMouseMove}
         onClick={handleClick}
