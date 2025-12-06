@@ -21,7 +21,13 @@ export function Game() {
   const [scale, setScale] = useState(1);
   const mousePositionRef = useRef({ x: GAME_WIDTH / 2, y: 0 });
 
-  useGameLoop(state.gameStatus, state.wave, state.helicopters, dispatch);
+  useGameLoop(
+    state.gameStatus,
+    state.wave,
+    state.helicopters,
+    state.helicoptersSpawnedThisWave,
+    dispatch
+  );
 
   // Calculate scale to fit screen
   useEffect(() => {

@@ -42,6 +42,7 @@ export interface GameState {
   score: number;
   wave: number;
   landedTroopers: number;
+  helicoptersSpawnedThisWave: number;
   gameStatus: "menu" | "playing" | "destroying" | "gameOver";
   helicopters: Helicopter[];
   paratroopers: Paratrooper[];

@@ -1,5 +1,3 @@
-import gunImg from "../assets/gun.png";
-
 interface BulletProps {
   x: number;
   y: number;
@@ -8,14 +6,12 @@ interface BulletProps {
 export function Bullet({ x, y }: BulletProps) {
   return (
     <div
-      className="absolute"
+      className="absolute w-2 h-2 bg-yellow-400 rounded-full border border-orange-500"
       style={{
         left: `${x}px`,
         top: `${y}px`,
         transform: "translate(-50%, -50%)",
       }}
-    >
-      <img src={gunImg} alt="Bullet" className="w-3 h-3" />
-    </div>
+    />
   );
 }

@@ -14,7 +14,7 @@ export function UI({ score, wave, landedTroopers }: UIProps) {
         Wave: {wave}
       </div>
       <div className="bg-black bg-opacity-50 px-4 py-2 rounded">
-        Landed: {landedTroopers} / 4
+        Landed: {landedTroopers}
       </div>
     </div>
   );

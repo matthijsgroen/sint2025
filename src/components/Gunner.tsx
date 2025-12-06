@@ -15,7 +15,7 @@ export function Gunner({ angle, x, y }: GunnerProps) {
 
   return (
     <div
-      className="absolute"
+      className="absolute z-10"
       style={{
         left: `${x}px`,
         top: `${y}px`,

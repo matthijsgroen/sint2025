@@ -20,6 +20,7 @@ const initialState: GameState = {
   score: 0,
   wave: 1,
   landedTroopers: 0,
+  helicoptersSpawnedThisWave: 0,
   gameStatus: "menu",
   helicopters: [],
   paratroopers: [],
@@ -48,6 +49,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...initialState,
         gameStatus: "playing",
+        helicoptersSpawnedThisWave: 0,
       };
 
     case "GAME_OVER":
@@ -88,12 +90,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
-    case "SPAWN_HELICOPTER": {
+    case "SPAWN_HELICOPTER":
       return {
         ...state,
         helicopters: [...state.helicopters, action.helicopter],
+        helicoptersSpawnedThisWave: state.helicoptersSpawnedThisWave + 1,
       };
-    }
 
     case "ADD_EXPLOSION": {
       const newExplosion: Explosion = {
@@ -112,6 +114,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         wave: state.wave + 1,
+        helicoptersSpawnedThisWave: 0,
       };
     }
 
@@ -140,13 +143,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const newParatroopers: Paratrooper[] = [];
       helicopters = helicopters.map((heli) => {
         if (heli.dropCooldown <= 0) {
-          newParatroopers.push({
-            id: `para-${Date.now()}-${Math.random()}`,
-            position: { x: heli.position.x, y: heli.position.y + 20 },
-            velocity: { x: 0, y: 20 },
-            parachuteOpen: false,
-            landed: false,
-          });
+          // Only drop if helicopter is within screen bounds (with margin)
+          if (heli.position.x > 50 && heli.position.x < GAME_WIDTH - 50) {
+            newParatroopers.push({
+              id: `para-${Date.now()}-${Math.random()}`,
+              position: { x: heli.position.x, y: heli.position.y + 20 },
+              velocity: { x: 0, y: 20 },
+              parachuteOpen: false,
+              landed: false,
+            });
+          }
           return { ...heli, dropCooldown: 2000 + Math.random() * 1000 };
         }
         return heli;
@@ -279,18 +285,30 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       );
       explosions = [...explosions, ...newExplosions];
 
-      // Count troopers that reached the bunker
+      // Count troopers that reached the bunker on each side
       const bunkerWidth = 64;
-      const landedTroopers = paratroopers.filter((p) => {
+      const landedOnLeft = paratroopers.filter((p) => {
         if (!p.landed) return false;
         const atBunkerSide =
           Math.abs(p.position.x - GUN_POSITION.x) <= bunkerWidth + 5;
-        return atBunkerSide;
+        const isLeft = p.position.x < GUN_POSITION.x;
+        return atBunkerSide && isLeft;
       }).length;
 
-      // Check for destroying state
+      const landedOnRight = paratroopers.filter((p) => {
+        if (!p.landed) return false;
+        const atBunkerSide =
+          Math.abs(p.position.x - GUN_POSITION.x) <= bunkerWidth + 5;
+        const isRight = p.position.x >= GUN_POSITION.x;
+        return atBunkerSide && isRight;
+      }).length;
+
+      const landedTroopers = landedOnLeft + landedOnRight;
+
+      // Check for destroying state - game over if 4 on one side
       if (
-        landedTroopers >= MAX_LANDED_TROOPERS &&
+        (landedOnLeft >= MAX_LANDED_TROOPERS ||
+          landedOnRight >= MAX_LANDED_TROOPERS) &&
         state.gameStatus === "playing"
       ) {
         return {
