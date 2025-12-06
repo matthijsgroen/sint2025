@@ -18,11 +18,11 @@ export function Paratrooper({ x, y, parachuteOpen, landed }: ParatrooperProps) {
       }}
     >
       {parachuteOpen && !landed && (
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2">
-          <div className="w-12 h-6 bg-white border-2 border-gray-800 rounded-t-full"></div>
-          <div className="flex justify-between px-1">
-            <div className="w-0.5 h-4 bg-gray-800"></div>
-            <div className="w-0.5 h-4 bg-gray-800"></div>
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2">
+          <div className="w-6 h-3 bg-white border border-gray-800 rounded-t-full"></div>
+          <div className="flex justify-between px-0.5">
+            <div className="w-px h-2 bg-gray-800"></div>
+            <div className="w-px h-2 bg-gray-800"></div>
           </div>
         </div>
       )}
