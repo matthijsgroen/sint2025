@@ -5,9 +5,10 @@ interface GunnerProps {
   angle: number;
   x: number;
   y: number;
+  speechBubble?: string | null;
 }
 
-export function Gunner({ angle, x, y }: GunnerProps) {
+export function Gunner({ angle, x, y, speechBubble }: GunnerProps) {
   // angle: positive = right side, negative = left side
   // Gunner faces LEFT by default, flip when aiming RIGHT
   const shouldFlip = angle > 0;
@@ -22,6 +23,38 @@ export function Gunner({ angle, x, y }: GunnerProps) {
         transform: "translate(-50%, -100%)",
       }}
     >
+      {/* Speech Bubble */}
+      {speechBubble && (
+        <div
+          className="absolute bg-white text-black px-3 py-2 rounded-lg shadow-lg whitespace-nowrap"
+          style={{
+            left: "50%",
+            bottom: "100%",
+            transform: "translateX(-50%)",
+            marginBottom: "8px",
+            fontSize: "14px",
+            fontWeight: "bold",
+            zIndex: 20,
+          }}
+        >
+          {speechBubble}
+          {/* Speech bubble arrow */}
+          <div
+            className="absolute bg-white"
+            style={{
+              left: "50%",
+              top: "100%",
+              transform: "translateX(-50%)",
+              width: "0",
+              height: "0",
+              borderLeft: "8px solid transparent",
+              borderRight: "8px solid transparent",
+              borderTop: "8px solid white",
+            }}
+          />
+        </div>
+      )}
+
       {/* Container that flips both gun and gunner */}
       <div
         style={{

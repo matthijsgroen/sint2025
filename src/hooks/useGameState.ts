@@ -20,6 +20,12 @@ const GRAVITY = 150; // pixels/second²
 const BOMB_DROP_DISTANCE = 250; // pixels from bunker
 const BUNKER_RADIUS = 66; // Half of bunker width
 
+// Scoring
+const POINTS_HELICOPTER = 50;
+const POINTS_PARATROOPER = 15;
+const POINTS_BOMBER = 300;
+const POINTS_BOMB = 150;
+
 const initialState: GameState = {
   score: 0,
   wave: 1,
@@ -36,6 +42,8 @@ const initialState: GameState = {
   lastFireTime: 0,
   destroyingStartTime: 0,
   lastBomberSpawn: 0,
+  speechBubble: null,
+  speechBubbleTime: 0,
 };
 
 function checkCollision(
@@ -96,10 +104,31 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         active: true,
       };
 
+      // Random speech bubble (10% chance)
+      const speechMessages = [
+        "For freedom!",
+        "Come get some!",
+        "Not today!",
+        "Eat lead!",
+        "Democracy rules!",
+        "Sweet liberty!",
+        "Have a nice cup of liber-tea!",
+      ];
+
+      const showSpeech = Math.random() < 0.05;
+      const speechBubble = showSpeech
+        ? speechMessages[Math.floor(Math.random() * speechMessages.length)]
+        : state.speechBubble;
+      const speechBubbleTime = showSpeech
+        ? action.timestamp
+        : state.speechBubbleTime;
+
       return {
         ...state,
         bullets: [...state.bullets, newBullet],
         lastFireTime: action.timestamp,
+        speechBubble,
+        speechBubbleTime,
       };
     }
 
@@ -141,6 +170,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case "UPDATE_ENTITIES": {
       const { deltaTime } = action;
       const dt = deltaTime / 1000; // Convert to seconds
+      const currentTime = Date.now();
+
+      // Clear speech bubble after 2 seconds
+      const speechBubble =
+        state.speechBubble && currentTime - state.speechBubbleTime > 2000
+          ? null
+          : state.speechBubble;
 
       // Update helicopters
       let helicopters = state.helicopters.map((heli) => ({
@@ -335,7 +371,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           if (checkCollision(bullet.position, heli.position, 5, 25)) {
             bulletsToRemove.add(bullet.id);
             helicoptersToRemove.add(heli.id);
-            score += 50;
+            score += POINTS_HELICOPTER;
             newExplosions.push({
               id: `explosion-${Date.now()}-${Math.random()}`,
               position: { ...heli.position },
@@ -354,7 +390,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ) {
             bulletsToRemove.add(bullet.id);
             paratroopersToRemove.add(para.id);
-            score += 25;
+            score += POINTS_PARATROOPER;
             newExplosions.push({
               id: `explosion-${Date.now()}-${Math.random()}`,
               position: { ...para.position },
@@ -371,7 +407,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           if (checkCollision(bullet.position, bomber.position, 5, 30)) {
             bulletsToRemove.add(bullet.id);
             bombersToRemove.add(bomber.id);
-            score += 150;
+            score += POINTS_BOMBER;
             newExplosions.push({
               id: `explosion-${Date.now()}-${Math.random()}`,
               position: { ...bomber.position },
@@ -388,7 +424,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           if (checkCollision(bullet.position, bomb.position, 5, 10)) {
             bulletsToRemove.add(bullet.id);
             bombsToRemove.add(bomb.id);
-            score += 100;
+            score += POINTS_BOMB;
             newExplosions.push({
               id: `explosion-${Date.now()}-${Math.random()}`,
               position: { ...bomb.position },
@@ -520,6 +556,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         bullets,
         explosions,
         landedTroopers,
+        speechBubble,
       };
     }
 

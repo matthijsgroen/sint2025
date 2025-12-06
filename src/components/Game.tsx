@@ -126,10 +126,9 @@ export function Game() {
   // Calculate scale to fit screen
   useEffect(() => {
     const updateScale = () => {
-      const padding = 40; // Padding around the game
-      const scaleX = (window.innerWidth - padding) / GAME_WIDTH;
-      const scaleY = (window.innerHeight - padding) / GAME_HEIGHT;
-      const newScale = Math.min(scaleX, scaleY, 1.5); // Cap at 1.5x to avoid too large
+      const scaleX = window.innerWidth / GAME_WIDTH;
+      const scaleY = window.innerHeight / GAME_HEIGHT;
+      const newScale = Math.min(scaleX, scaleY);
       setScale(newScale);
     };
 
@@ -394,6 +393,7 @@ export function Game() {
                 angle={state.gunAngle}
                 x={GUN_POSITION.x}
                 y={GUN_POSITION.y}
+                speechBubble={state.speechBubble}
               />
             )}
 

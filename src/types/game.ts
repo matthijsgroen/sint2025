@@ -69,6 +69,8 @@ export interface GameState {
   lastFireTime: number;
   destroyingStartTime: number;
   lastBomberSpawn: number;
+  speechBubble: string | null;
+  speechBubbleTime: number;
 }
 
 export type GameAction =
